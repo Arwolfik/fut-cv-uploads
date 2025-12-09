@@ -1,0 +1,181 @@
+body {
+    font-family: "Ubuntu", sans-serif;
+    font-weight: 400;
+    background-color: #f5f5f5;
+    color: #333;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    min-height: 100vh;
+    margin: 0;
+    padding: 20px;
+    box-sizing: border-box;
+}
+
+h2 {
+    font-weight: 700;
+    font-size: 1.8rem;
+    color: #2c3e50;
+    margin-bottom: 20px;
+    text-align: center;
+}
+
+.screen {
+    background: white;
+    padding: 25px;
+    border-radius: 8px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    width: 100%;
+    max-width: 600px;
+    margin-bottom: 20px;
+    box-sizing: border-box;
+}
+
+label {
+    display: block;
+    font-weight: 400;
+    margin-bottom: 8px;
+    color: #34495e;
+}
+
+input, button {
+    width: 100%;
+    padding: 12px;
+    font-size: 1rem;
+    border: 1px solid #dcdcdc;
+    border-radius: 4px;
+    margin-bottom: 15px;
+    font-family: "Ubuntu", sans-serif;
+    font-weight: 400;
+    box-sizing: border-box;
+}
+
+input:focus {
+    outline: none;
+    border-color: #3498db;
+    box-shadow: 0 0 5px rgba(52, 152, 219, 0.3);
+}
+
+button {
+    background-color: #F46D00;
+    color: white;
+    border: none;
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background-color 0.2s;
+    margin-top: 10px;
+}
+
+button.secondary {
+    background-color: #3498db;
+}
+
+button:hover {
+    background-color: #ff8622c4;
+}
+
+button.secondary:hover {
+    background-color: #2980b9;
+}
+
+button:focus {
+    outline: none;
+    box-shadow: 0 0 5px rgba(52, 152, 219, 0.5);
+}
+
+.button-group {
+    display: flex;
+    gap: 10px;
+    margin-top: 15px;
+}
+
+.button-group button {
+    flex: 1;
+}
+
+.hidden {
+    display: none;
+}
+
+.error-message {
+    color: #c0392b;
+    font-weight: 500;
+    margin: 10px 0;
+    text-align: center;
+}
+
+.success-message {
+    color: #27ae60;
+    font-weight: 500;
+    margin: 10px 0;
+    text-align: center;
+}
+
+.file-info {
+    background-color: #f8f9fa;
+    border: 1px solid #e9ecef;
+    border-radius: 4px;
+    padding: 10px;
+    margin: 10px 0;
+    font-size: 0.9rem;
+}
+
+.progress-bar {
+    height: 5px;
+    background-color: #e0e0e0;
+    border-radius: 3px;
+    margin: 10px 0;
+    overflow: hidden;
+}
+
+.progress {
+    height: 100%;
+    background-color: #4CAF50;
+    width: 0%;
+    transition: width 0.3s;
+}
+
+.upload-status {
+    text-align: center;
+    margin: 10px 0;
+    font-size: 0.9rem;
+}
+
+.step-indicator {
+    display: flex;
+    justify-content: center;
+    margin-bottom: 20px;
+    gap: 10px;
+}
+
+.step {
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    background-color: #ddd;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+}
+
+.step.active {
+    background-color: #F46D00;
+    color: white;
+}
+
+.step.completed {
+    background-color: #27ae60;
+    color: white;
+}
+
+@media (max-width: 600px) {
+    .screen {
+        padding: 15px;
+    }
+
+    h2 {
+        font-size: 1.5rem;
+    }
+}
