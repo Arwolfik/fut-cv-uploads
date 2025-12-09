@@ -1,11 +1,13 @@
+// ================== КОНФИГ ==================
 const BASE_URL = "https://ndb.fut.ru";
-TABLE_ID = "m6tyxd3346dlhco";
-API_KEY = "N0eYiucuiiwSGIvPK5uIcOasZc_nJy6mBUihgaYQ";
+const TABLE_ID = "m6tyxd3346dlhco";
+const API_KEY = "N0eYiucuiiwSGIvPK5uIcOasZc_nJy6mBUihgaYQ";
 
-RECORDS_ENDPOINT = `${BASE_URL}/api/v2/tables/${TABLE_ID}/records`;
-FILE_UPLOAD_ENDPOINT = `${BASE_URL}/api/v2/storage/upload`;
+const RECORDS_ENDPOINT = `${BASE_URL}/api/v2/tables/${TABLE_ID}/records`;
+const FILE_UPLOAD_ENDPOINT = `${BASE_URL}/api/v2/storage/upload`;
 
-RESUME_FIELD_ID = "crizvpe2wzh0s98"; // поле для резюме
+// поле для резюме
+const RESUME_FIELD_ID = "crizvpe2wzh0s98";
 
 let currentRecordId = null;
 let userPlatform = null;
@@ -16,21 +18,29 @@ const screens = {
     result: document.getElementById("resultScreen")
 };
 
+// ================== ВСПОМОГАТЕЛЬНЫЕ ==================
+
 function showScreen(name) {
-    document.querySelectorAll('.screen').forEach(s => s.classList.add('hidden'));
-    if (screens[name]) screens[name].classList.remove('hidden');
+    document.querySelectorAll(".screen").forEach(s => s.classList.add("hidden"));
+    if (screens[name]) {
+        screens[name].classList.remove("hidden");
+    }
 }
 
 function showError(msg) {
+    document.body.className = "";
     document.body.innerHTML = `
-        <div style="padding:50px;text-align:center;color:white;font-family:sans-serif;">
-            <h2>Ошибка</h2>
-            <p style="font-size:18px;margin:18px;margin:30px 0;">${msg}</p>
-            <button onclick="location.reload()" style="padding:15px 35px;font-size:17px;border-radius:8px;">Попробовать снова</button>
-        </div>`;
+        <div class="app-error">
+            <div>
+                <h2>Ошибка</h2>
+                <p style="font-size:18px;margin:25px 0;">${msg}</p>
+                <button onclick="location.reload()">Попробовать снова</button>
+            </div>
+        </div>
+    `;
 }
 
-// Ждём vkBridge (важно для VK Mini Apps 2025)
+// Ждём vkBridge (важно для VK Mini Apps)
 async function waitForVkBridge() {
     return new Promise(resolve => {
         if (window.vkBridge) return resolve(window.vkBridge);
@@ -40,29 +50,32 @@ async function waitForVkBridge() {
                 resolve(window.vkBridge);
             }
         }, 50);
-        setTimeout(() => { clearInterval(check); resolve(null); }, 5000);
+        setTimeout(() => {
+            clearInterval(check);
+            resolve(null);
+        }, 5000);
     });
 }
 
 // Поиск пользователя по tg-id (с поддержкой _VK)
 async function findUser(id) {
-    // Сначала ищем как Telegram ID
+    // Telegram ID как есть
     let res = await fetch(`${RECORDS_ENDPOINT}?where=(tg-id,eq,${id})`, {
         headers: { "xc-token": API_KEY }
     });
     let data = await res.json();
     if (data.list?.length > 0) {
-        return { recordId: data.list[0].Id || data.list[0].id, platform: 'tg' };
+        return { recordId: data.list[0].Id || data.list[0].id, platform: "tg" };
     }
 
-    // Потом как VK
+    // VK ID c суффиксом _VK
     const vkValue = id + "_VK";
     res = await fetch(`${RECORDS_ENDPOINT}?where=(tg-id,eq,${vkValue})`, {
         headers: { "xc-token": API_KEY }
     });
     data = await res.json();
     if (data.list?.length > 0) {
-        return { recordId: data.list[0].Id || data.list[0].id, platform: 'vk' };
+        return { recordId: data.list[0].Id || data.list[0].id, platform: "vk" };
     }
 
     return null;
@@ -70,6 +83,10 @@ async function findUser(id) {
 
 // Загрузка файла резюме
 async function uploadResume(recordId, file) {
+    if (!recordId) {
+        throw new Error("Технический режим: запись в базу недоступна.");
+    }
+
     const form = new FormData();
     form.append("file", file);
     form.append("path", "resumes");
@@ -109,23 +126,25 @@ async function uploadResume(recordId, file) {
 
     if (!patch.ok) {
         const err = await patch.text();
-        throw new Error("Не удалось сохранить в базу");
+        console.error("PATCH error:", err);
+        throw new Error("Не удалось сохранить файл в базу.");
     }
 }
 
-// Прогресс (фейковый, но красивый)
+// Фейковый прогресс
 async function fakeProgress() {
     const bar = document.getElementById("progress");
     const status = document.getElementById("status");
     let p = 0;
-    return new Promise(res => {
+
+    return new Promise(resolve => {
         const int = setInterval(() => {
             p += 12 + Math.random() * 20;
             if (p >= 100) {
                 p = 100;
                 clearInterval(int);
                 status.textContent = "Резюме успешно загружено!";
-                res();
+                resolve();
             }
             bar.style.width = p + "%";
             status.textContent = `Загрузка ${Math.round(p)}%`;
@@ -133,47 +152,76 @@ async function fakeProgress() {
     });
 }
 
-// =================================== СТАРТ ===================================
+// ================== СТАРТ ==================
+
 (async () => {
     try {
         let found = false;
 
-        // 1. Пытаемся определить VK
+        // ---- 1. Пытаемся определить VK среду ----
         const bridge = await waitForVkBridge();
         if (bridge) {
-            await bridge.send("VKWebAppInit");
-            const userInfo = await bridge.send("VKWebAppGetUserInfo");
-            rawUserId = userInfo.id;
-            userPlatform = "vk";
-            found = true;
-            console.log("VK пользователь:", rawUserId);
+            try {
+                // Рекомендованный VK вызов
+                await bridge.send("VKWebAppInit");
+                const userInfo = await bridge.send("VKWebAppGetUserInfo");
+                if (userInfo && userInfo.id) {
+                    rawUserId = userInfo.id;
+                    userPlatform = "vk";
+                    found = true;
+                    console.log("VK пользователь:", rawUserId);
+                }
+            } catch (vkErr) {
+                console.log("VK Bridge неактивен в этом окружении", vkErr);
+            }
         }
 
-        // 2. Если не VK — значит Telegram
+        // ---- 2. Если не VK — пробуем Telegram WebApp ----
         if (!found && window.Telegram?.WebApp?.initDataUnsafe?.user?.id) {
             const tg = window.Telegram.WebApp;
-            tg.ready();
-            tg.expand();
+            try {
+                tg.ready();
+                tg.expand();
+            } catch (e) {
+                console.log("Telegram WebApp готов, но expand/ready упали", e);
+            }
             rawUserId = tg.initDataUnsafe.user.id;
             userPlatform = "tg";
             found = true;
             console.log("Telegram пользователь:", rawUserId);
         }
 
+        // ---- 3. Если не нашли ни VK, ни Telegram — обычный браузер (GitHub Pages) ----
         if (!found || !rawUserId) {
-            throw new Error("Не удалось определить платформу или пользователя");
+            console.log("Обычный веб-браузер: включаем демо-режим без привязки к пользователю");
+            showScreen("upload");
+            const errorBlock = document.getElementById("error");
+            if (errorBlock) {
+                errorBlock.textContent = "Вы на демо-версии (GitHub Pages). Загрузка в базу отключена.";
+                errorBlock.classList.remove("hidden");
+            }
+            return; // дальше не ищем пользователя в таблице
         }
 
-        // 3. Ищем пользователя в базе
+        // ---- 4. Ищем пользователя в базе ----
         const user = await findUser(rawUserId);
         if (!user) {
-            throw new Error("Вы не зарегистрированы. Напишите в бот @вашбот");
+            // Пользователь не найден в таблице: покажем форму, но предупредим
+            console.warn("Пользователь не найден в базе");
+            showScreen("upload");
+            const errorBlock = document.getElementById("error");
+            if (errorBlock) {
+                errorBlock.textContent = "Вы не зарегистрированы. Напишите в бот, чтобы привязать аккаунт.";
+                errorBlock.classList.remove("hidden");
+            }
+            // currentRecordId остаётся null → uploadResume выдаст понятную ошибку
+            return;
         }
 
         currentRecordId = user.recordId;
-        userPlatform = user.platform; // точная платформа из базы
+        userPlatform = user.platform;
 
-        // 4. Всё готово — показываем экран загрузки
+        // ---- 5. Всё ок, показываем экран загрузки ----
         showScreen("upload");
 
     } catch (err) {
@@ -182,34 +230,57 @@ async function fakeProgress() {
     }
 })();
 
-// =================================== ЗАГРУЗКА РЕЗЮМЕ ===================================
+// ================== ОБРАБОТЧИКИ ==================
+
+// Загрузка резюме
 document.getElementById("submitFile")?.addEventListener("click", async () => {
     const input = document.getElementById("fileInput");
     const error = document.getElementById("error");
     const file = input.files[0];
 
     error.classList.add("hidden");
+    error.textContent = "";
 
-    if (!file) return error.textContent = "Выберите файл", error.classList.remove("hidden");
-    if (file.size > 15 * 1024 * 1024) return error.textContent = "Файл больше 15 МБ", error.classList.remove("hidden");
+    if (!file) {
+        error.textContent = "Выберите файл.";
+        error.classList.remove("hidden");
+        return;
+    }
 
-    const allowed = ["application/pdf","application/msword","application/vnd.openxmlformats-officedocument.wordprocessingml.document","image/png","image/jpeg"];
-    if (!allowed.includes(file.type)) return error.textContent = "Только PDF, Word или фото", error.classList.remove("hidden");
+    if (file.size > 15 * 1024 * 1024) {
+        error.textContent = "Файл больше 15 МБ.";
+        error.classList.remove("hidden");
+        return;
+    }
+
+    const allowed = [
+        "application/pdf",
+        "application/msword",
+        "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        "image/png",
+        "image/jpeg"
+    ];
+
+    if (!allowed.includes(file.type)) {
+        error.textContent = "Допустимы только PDF, DOC/DOCX или PNG/JPG.";
+        error.classList.remove("hidden");
+        return;
+    }
 
     try {
         await fakeProgress();
         await uploadResume(currentRecordId, file);
         showScreen("result");
     } catch (e) {
-        error.textContent = e.message || "Ошибка загрузки";
+        error.textContent = e.message || "Ошибка загрузки файла.";
         error.classList.remove("hidden");
     }
 });
 
-// Кнопка закрытия на финальном экране
+// Кнопка закрытия
 document.getElementById("closeApp")?.addEventListener("click", () => {
     if (userPlatform === "vk" && window.vkBridge) {
-        vkBridge.send("VKWebAppClose", { status: "success" });
+        window.vkBridge.send("VKWebAppClose", { status: "success" });
     } else if (window.Telegram?.WebApp) {
         window.Telegram.WebApp.close();
     } else {
