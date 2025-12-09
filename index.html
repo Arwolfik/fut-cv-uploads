@@ -4,22 +4,34 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Загрузка резюме</title>
+
+    <!-- Telegram WebApp -->
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
+
+    <!-- VK Bridge -->
     <script src="https://unpkg.com/@vkontakte/vk-bridge/dist/browser.min.js"></script>
+
+    <!-- Шрифт -->
     <link href="https://fonts.googleapis.com/css2?family=Ubuntu:wght@300;400;500;700&display=swap" rel="stylesheet">
+
+    <!-- Стили -->
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
 
-    <div class="screen" id="uploadScreen">
+    <div class="screen hidden" id="uploadScreen">
         <h2>Загрузите резюме</h2>
-        <div class="file-info">Формат: PDF, DOCX, PNG, XLSX (макс. 15MB)</div>
+        <div class="file-info">Формат: PDF, DOCX, PNG, JPG (макс. 15MB)</div>
+
         <input type="file" id="fileInput">
+
         <div class="progress-bar">
             <div class="progress" id="progress"></div>
         </div>
+
         <div class="upload-status" id="status"></div>
         <div id="error" class="error-message hidden"></div>
+
         <button id="submitFile">Отправить файл</button>
     </div>
 
@@ -29,6 +41,7 @@
         <button id="closeApp">Закрыть приложение</button>
     </div>
 
+    <!-- Скрипт в самом конце -->
     <script src="index.js"></script>
 </body>
 </html>
