@@ -6,8 +6,7 @@ const API_KEY = "N0eYiucuiiwSGIvPK5uIcOasZc_nJy6mBUihgaYQ";
 const RECORDS_ENDPOINT = `${BASE_URL}/api/v2/tables/${TABLE_ID}/records`;
 const FILE_UPLOAD_ENDPOINT = `${BASE_URL}/api/v2/storage/upload`;
 
-// поле для резюме
-const RESUME_FIELD_ID = "crizvpe2wzh0s98";
+const RESUME_FIELD_ID = "crizvpe2wzh0s98"; // поле для резюме
 
 let currentRecordId = null;
 let userPlatform = null;
@@ -27,7 +26,21 @@ function showScreen(name) {
     }
 }
 
-function showError(msg) {
+function showInlineError(msg) {
+    const error = document.getElementById("error");
+    if (!error) return;
+    error.textContent = msg;
+    error.classList.remove("hidden");
+}
+
+function clearInlineError() {
+    const error = document.getElementById("error");
+    if (!error) return;
+    error.textContent = "";
+    error.classList.add("hidden");
+}
+
+function showErrorFatal(msg) {
     document.body.className = "";
     document.body.innerHTML = `
         <div class="app-error">
@@ -40,26 +53,9 @@ function showError(msg) {
     `;
 }
 
-// Ждём vkBridge (важно для VK Mini Apps)
-async function waitForVkBridge() {
-    return new Promise(resolve => {
-        if (window.vkBridge) return resolve(window.vkBridge);
-        const check = setInterval(() => {
-            if (window.vkBridge) {
-                clearInterval(check);
-                resolve(window.vkBridge);
-            }
-        }, 50);
-        setTimeout(() => {
-            clearInterval(check);
-            resolve(null);
-        }, 5000);
-    });
-}
-
 // Поиск пользователя по tg-id (с поддержкой _VK)
 async function findUser(id) {
-    // Telegram ID как есть
+    // Telegram ID
     let res = await fetch(`${RECORDS_ENDPOINT}?where=(tg-id,eq,${id})`, {
         headers: { "xc-token": API_KEY }
     });
@@ -68,7 +64,7 @@ async function findUser(id) {
         return { recordId: data.list[0].Id || data.list[0].id, platform: "tg" };
     }
 
-    // VK ID c суффиксом _VK
+    // VK ID с суффиксом _VK
     const vkValue = id + "_VK";
     res = await fetch(`${RECORDS_ENDPOINT}?where=(tg-id,eq,${vkValue})`, {
         headers: { "xc-token": API_KEY }
@@ -81,10 +77,10 @@ async function findUser(id) {
     return null;
 }
 
-// Загрузка файла резюме
+// Загрузка файла резюме в хранилище и запись в таблицу
 async function uploadResume(recordId, file) {
     if (!recordId) {
-        throw new Error("Технический режим: запись в базу недоступна.");
+        throw new Error("Техническая ошибка: не найдена запись пользователя в базе.");
     }
 
     const form = new FormData();
@@ -97,7 +93,7 @@ async function uploadResume(recordId, file) {
         body: form
     });
 
-    if (!upload.ok) throw new Error("Ошибка загрузки файла на сервер");
+    if (!upload.ok) throw new Error("Ошибка загрузки файла на сервер.");
 
     const info = await upload.json();
     const fileData = Array.isArray(info) ? info[0] : info;
@@ -125,8 +121,8 @@ async function uploadResume(recordId, file) {
     });
 
     if (!patch.ok) {
-        const err = await patch.text();
-        console.error("PATCH error:", err);
+        const errText = await patch.text();
+        console.error("PATCH error:", errText);
         throw new Error("Не удалось сохранить файл в базу.");
     }
 }
@@ -156,100 +152,80 @@ async function fakeProgress() {
 
 (async () => {
     try {
-        let found = false;
+        // 1. Сразу показываем экран загрузки, чтобы не было белого экрана
+        showScreen("upload");
 
-        // ---- 1. Пытаемся определить VK среду ----
-        const bridge = await waitForVkBridge();
-        if (bridge) {
-            try {
-                // Рекомендованный VK вызов
-                await bridge.send("VKWebAppInit");
-                const userInfo = await bridge.send("VKWebAppGetUserInfo");
-                if (userInfo && userInfo.id) {
-                    rawUserId = userInfo.id;
-                    userPlatform = "vk";
-                    found = true;
-                    console.log("VK пользователь:", rawUserId);
-                }
-            } catch (vkErr) {
-                console.log("VK Bridge неактивен в этом окружении", vkErr);
-            }
-        }
-
-        // ---- 2. Если не VK — пробуем Telegram WebApp ----
-        if (!found && window.Telegram?.WebApp?.initDataUnsafe?.user?.id) {
+        // 2. Определяем платформу
+        // Сначала Telegram (ты запускаешь через tg)
+        if (window.Telegram?.WebApp?.initDataUnsafe?.user?.id) {
             const tg = window.Telegram.WebApp;
             try {
                 tg.ready();
                 tg.expand();
             } catch (e) {
-                console.log("Telegram WebApp готов, но expand/ready упали", e);
+                console.log("Telegram ready/expand error:", e);
             }
             rawUserId = tg.initDataUnsafe.user.id;
             userPlatform = "tg";
-            found = true;
             console.log("Telegram пользователь:", rawUserId);
         }
-
-        // ---- 3. Если не нашли ни VK, ни Telegram — обычный браузер (GitHub Pages) ----
-        if (!found || !rawUserId) {
-            console.log("Обычный веб-браузер: включаем демо-режим без привязки к пользователю");
-            showScreen("upload");
-            const errorBlock = document.getElementById("error");
-            if (errorBlock) {
-                errorBlock.textContent = "Вы на демо-версии (GitHub Pages). Загрузка в базу отключена.";
-                errorBlock.classList.remove("hidden");
+        // Если не Telegram — пробуем VK Mini Apps
+        else if (window.vkBridge) {
+            try {
+                await window.vkBridge.send("VKWebAppInit");
+                const userInfo = await window.vkBridge.send("VKWebAppGetUserInfo");
+                if (userInfo && userInfo.id) {
+                    rawUserId = userInfo.id;
+                    userPlatform = "vk";
+                    console.log("VK пользователь:", rawUserId);
+                }
+            } catch (vkErr) {
+                console.log("VK Bridge недоступен в этом окружении:", vkErr);
             }
-            return; // дальше не ищем пользователя в таблице
         }
 
-        // ---- 4. Ищем пользователя в базе ----
-        const user = await findUser(rawUserId);
-        if (!user) {
-            // Пользователь не найден в таблице: покажем форму, но предупредим
-            console.warn("Пользователь не найден в базе");
-            showScreen("upload");
-            const errorBlock = document.getElementById("error");
-            if (errorBlock) {
-                errorBlock.textContent = "Вы не зарегистрированы. Напишите в бот, чтобы привязать аккаунт.";
-                errorBlock.classList.remove("hidden");
-            }
-            // currentRecordId остаётся null → uploadResume выдаст понятную ошибку
+        if (!rawUserId) {
+            // В Telegram сюда попадать не должны, значит что-то не так с initDataUnsafe
+            showInlineError("Не удалось определить пользователя. Откройте приложение из Telegram-бота.");
             return;
         }
 
-        currentRecordId = user.recordId;
-        userPlatform = user.platform;
-
-        // ---- 5. Всё ок, показываем экран загрузки ----
-        showScreen("upload");
-
+        // 3. Пытаемся найти пользователя в базе
+        try {
+            const user = await findUser(rawUserId);
+            if (!user) {
+                showInlineError("Вы не зарегистрированы. Напишите в бот, чтобы привязать аккаунт.");
+                return;
+            }
+            currentRecordId = user.recordId;
+            userPlatform = user.platform;
+            console.log("Найдена запись в базе:", currentRecordId, userPlatform);
+        } catch (dbErr) {
+            console.error("Ошибка при поиске пользователя:", dbErr);
+            showInlineError("Не удалось получить данные пользователя. Попробуйте позже.");
+        }
     } catch (err) {
-        console.error(err);
-        showError(err.message || "Ошибка запуска");
+        console.error("Критическая ошибка:", err);
+        showErrorFatal("Критическая ошибка запуска приложения.");
     }
 })();
 
 // ================== ОБРАБОТЧИКИ ==================
 
-// Загрузка резюме
+// Отправка файла
 document.getElementById("submitFile")?.addEventListener("click", async () => {
     const input = document.getElementById("fileInput");
-    const error = document.getElementById("error");
     const file = input.files[0];
 
-    error.classList.add("hidden");
-    error.textContent = "";
+    clearInlineError();
 
     if (!file) {
-        error.textContent = "Выберите файл.";
-        error.classList.remove("hidden");
+        showInlineError("Выберите файл.");
         return;
     }
 
     if (file.size > 15 * 1024 * 1024) {
-        error.textContent = "Файл больше 15 МБ.";
-        error.classList.remove("hidden");
+        showInlineError("Файл больше 15 МБ.");
         return;
     }
 
@@ -262,8 +238,7 @@ document.getElementById("submitFile")?.addEventListener("click", async () => {
     ];
 
     if (!allowed.includes(file.type)) {
-        error.textContent = "Допустимы только PDF, DOC/DOCX или PNG/JPG.";
-        error.classList.remove("hidden");
+        showInlineError("Допустимы только PDF, DOC/DOCX или PNG/JPG.");
         return;
     }
 
@@ -272,8 +247,8 @@ document.getElementById("submitFile")?.addEventListener("click", async () => {
         await uploadResume(currentRecordId, file);
         showScreen("result");
     } catch (e) {
-        error.textContent = e.message || "Ошибка загрузки файла.";
-        error.classList.remove("hidden");
+        console.error("Ошибка загрузки:", e);
+        showInlineError(e.message || "Ошибка загрузки файла.");
     }
 });
 
