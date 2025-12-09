@@ -38,7 +38,8 @@ label {
     color: #34495e;
 }
 
-input, button {
+input,
+button {
     width: 100%;
     padding: 12px;
     font-size: 1rem;
@@ -178,4 +179,22 @@ button:focus {
     h2 {
         font-size: 1.5rem;
     }
+}
+
+/* Глобальный экран ошибки, если что-то пошло совсем не так */
+.app-error {
+    background: #20232a;
+    color: #fff;
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    padding: 40px 20px;
+    box-sizing: border-box;
+}
+
+.app-error button {
+    width: auto;
+    padding: 12px 30px;
 }
