@@ -143,45 +143,7 @@ button:focus {
     font-size: 0.9rem;
 }
 
-.step-indicator {
-    display: flex;
-    justify-content: center;
-    margin-bottom: 20px;
-    gap: 10px;
-}
-
-.step {
-    width: 30px;
-    height: 30px;
-    border-radius: 50%;
-    background-color: #ddd;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-weight: 700;
-}
-
-.step.active {
-    background-color: #F46D00;
-    color: white;
-}
-
-.step.completed {
-    background-color: #27ae60;
-    color: white;
-}
-
-@media (max-width: 600px) {
-    .screen {
-        padding: 15px;
-    }
-
-    h2 {
-        font-size: 1.5rem;
-    }
-}
-
-/* Глобальный экран ошибки, если что-то пошло совсем не так */
+/* Глобальный экран критической ошибки */
 .app-error {
     background: #20232a;
     color: #fff;
@@ -197,4 +159,14 @@ button:focus {
 .app-error button {
     width: auto;
     padding: 12px 30px;
+}
+
+@media (max-width: 600px) {
+    .screen {
+        padding: 15px;
+    }
+
+    h2 {
+        font-size: 1.5rem;
+    }
 }
